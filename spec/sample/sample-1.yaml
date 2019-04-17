@@ -1,0 +1,95 @@
+gods: 0.0.1
+name: CartAPI
+baseURI: /cart
+datasource:
+  url: 'root:root@tcp(localhost:3306)/cartdb'
+  type: mysql
+
+queries: 
+  - query: &getCartByID
+      sql: select productID,quantity from cart where userID=?
+      params:
+        - name: userID
+          sqlType: string
+          ordinal: 1
+      result:
+        type: object
+        schema:
+          - name: productID
+            column: productID
+          - name: quantity
+            column: quantity  
+  - query: &addCart
+      sql: insert into cart (userID,productID,quantity) values(?,?,?)
+      params:
+        - name:  userID
+          sqlType: string
+          ordinal: 1
+        - name: productID
+          sqlType: string
+          ordinal: 2
+        - name: quantity
+          sqlType: integer
+          ordinal: 3
+  - query: &updateQuantity
+      sql: update cart set quantity=? where productID=? and userID=?
+      params:
+        - name: quantity
+          sqlType: integer
+          ordinal: 1
+        - name: productID
+          sqlType: string
+          ordinal: 2
+        - name: userID
+          sqlType: string
+          ordinal: 3
+  - query: &emptyCart
+      sql: delete from cart where userID=?
+      params:
+      - name: userID
+        sqlType: string
+        ordinal: 1
+
+
+
+resources:
+  - path: /cart/{userID}
+    method:  get
+    query: *getCartByID
+    parameters:
+      - name: userID
+        in: path
+        queryParam: userID
+  - path: /cart/{userID}       
+    method: delete
+    query: *emptyCart
+    parameters:
+        - name: userID
+          in: path
+          queryParam: userID
+  - path: /cart/{userID}  
+    method: put
+    query: *updateQuantity
+    parameters:
+        - name: userID
+          in: path
+          queryParam: userID
+        - name: productID
+          in: body
+          queryParam: productID
+        - name: quantity
+          in: body
+          queryParam: quantity
+  - path: /cart
+    method: post
+    query: *addCart
+    parameters:
+        - name: userID
+          in: body
+          queryParam: userID
+        - name: productID
+          in: body
+          queryParam: productID
+        - name: quantity
+          in: body
+          queryParam: quantity
