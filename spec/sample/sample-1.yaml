@@ -13,7 +13,7 @@ queries:
           sqlType: string
           ordinal: 1
       result:
-        type: object
+        type: array
         schema:
           - name: productID
             column: productID

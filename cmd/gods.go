@@ -46,34 +46,92 @@ func requestHandler(repo *db.Repository, query model.Query) func(res http.Respon
 		}
 		results := make([]interface{}, len(query.Result.Fields))
 		resultPtrs := make([]interface{}, len(query.Result.Fields))
-		result := make(map[string]interface{}, len(query.Result.Fields))
 
 		for i := range query.Result.Fields {
 			results[i] = ""
 			resultPtrs[i] = &results[i]
 		}
+		res.Header().Set("Content-Type", "application/json")
 		switch query.Result.Type {
 		case "object":
+			results := make([]interface{}, len(query.Result.Fields))
+			resultPtrs := make([]interface{}, len(query.Result.Fields))
+
+			for i := range query.Result.Fields {
+				results[i] = ""
+				resultPtrs[i] = &results[i]
+			}
+			result := make(map[string]interface{}, len(query.Result.Fields))
 			log.Println("Inside object Result")
 			for rows.Next() {
 
 				scnErr := rows.Scan(resultPtrs...)
-				log.Println("Scanning row")
+				log.Println("Scanning row for object")
 				if scnErr != nil {
 					log.Fatal(scnErr)
 				}
 			}
 			for i, field := range query.Result.Fields {
-				result[field.Name] = results[i]
+				switch results[i].(type) {
+				case string:
+					result[field.Name] = results[i].(string)
+				case int64:
+					result[field.Name] = results[i].(int64)
+				case []byte:
+					result[field.Name] = string(results[i].([]byte))
+				default:
+					log.Println("Assiging default for ", field.Column)
+					log.Printf("Output type %T", results[i])
+					result[field.Name] = results[i]
+				}
+
+			}
+			encoder := json.NewEncoder(res)
+			encoErr := encoder.Encode(result)
+
+			if encoErr != nil {
+				log.Fatal(encoErr)
 			}
 		case "array":
-		}
-		res.Header().Set("Content-Type", "application/json")
-		encoder := json.NewEncoder(res)
-		encoErr := encoder.Encode(result)
+			results := make([]interface{}, len(query.Result.Fields))
+			resultPtrs := make([]interface{}, len(query.Result.Fields))
 
-		if encoErr != nil {
-			log.Fatal(encoErr)
+			for i := range query.Result.Fields {
+				results[i] = ""
+				resultPtrs[i] = &results[i]
+			}
+			var arrayOfMap []map[string]interface{}
+			for rows.Next() {
+				result := make(map[string]interface{}, len(query.Result.Fields))
+				scnErr := rows.Scan(resultPtrs...)
+				log.Println("Scanning row for objects in array")
+				if scnErr != nil {
+					log.Fatal(scnErr)
+				}
+
+				for i, field := range query.Result.Fields {
+					switch results[i].(type) {
+					case string:
+						result[field.Name] = results[i].(string)
+					case int64:
+						result[field.Name] = results[i].(int64)
+					case []byte:
+						result[field.Name] = string(results[i].([]byte))
+					default:
+						log.Println("Assiging default for ", field.Column)
+						log.Printf("Output type %T", results[i])
+						result[field.Name] = results[i]
+					}
+
+				}
+				arrayOfMap = append(arrayOfMap, result)
+			}
+			encoder := json.NewEncoder(res)
+			encoErr := encoder.Encode(arrayOfMap)
+
+			if encoErr != nil {
+				log.Fatal(encoErr)
+			}
 		}
 
 	}
